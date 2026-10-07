@@ -6,6 +6,7 @@ import hub.errors
 import hub.registry
 import hub.transport
 from hub import state
+from hub.handlers.select import STOP_BUTTON
 
 
 async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -24,8 +25,14 @@ async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         hub.transport.new_session(session, "claude --permission-mode auto")
         state.registry.put(session_id, session)
         result = "registered"
+        # Per docs/technical-concept.md: this chat is meant to *be* the
+        # control surface for a session, not a bot you redirect each time
+        # — so a freshly created session becomes the active one immediately.
+        context.user_data["active_session"] = session_id
         await update.effective_message.reply_text(
-            f"registered and launched session {session_id} on {host}."
+            f"registered and launched session {session_id} on {host}.\n"
+            f"Now talking to it directly — just send your messages, no need for /ask.",
+            reply_markup=STOP_BUTTON,
         )
     except Exception as exc:
         result = await hub.errors.reply_failure(update, "/new", exc)

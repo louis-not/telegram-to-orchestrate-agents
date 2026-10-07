@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from hub import activity, errors, state, transport
+from hub.handlers.select import STOP_BUTTON
 
 
 async def cmd_resume(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -26,7 +27,12 @@ async def cmd_resume(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     try:
         transport.new_session(session, f"claude --resume={session.claude_session_id}")
         result = "resumed"
-        await update.effective_message.reply_text(f"resumed session {session_id}.")
+        context.user_data["active_session"] = session_id
+        await update.effective_message.reply_text(
+            f"resumed session {session_id}.\n"
+            f"Now talking to it directly — just send your messages, no need for /ask.",
+            reply_markup=STOP_BUTTON,
+        )
     except Exception as exc:
         result = await errors.reply_failure(update, "/resume", exc)
 
