@@ -3,9 +3,11 @@ import logging
 from telegram import Update
 from telegram.ext import Application, ApplicationHandlerStop, ContextTypes, TypeHandler
 
-from hub import activity, config, handlers, lock, logging_setup, ratelimit, security, state
+from hub import activity, config, discovery, handlers, lock, logging_setup, ratelimit, security, state
 
 logger = logging.getLogger(__name__)
+
+DISCOVERY_INTERVAL_SECONDS = 15
 
 
 async def _rate_limit_gate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -23,6 +25,13 @@ async def _notify_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         activity.record(0, "monitor.tick", session_id, "notified")
 
 
+async def _discovery_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+    for session_id in discovery.sync_local_sessions():
+        activity.record(0, "discovery.sync", session_id, "auto-registered")
+        for user_id in config.ALLOWED_USER_IDS:
+            await context.bot.send_message(chat_id=user_id, text=f"auto-registered new local session: {session_id}")
+
+
 def main() -> None:
     lock.acquire()
     logging_setup.configure()
@@ -36,6 +45,7 @@ def main() -> None:
     handlers.register_all(application)
 
     application.job_queue.run_repeating(_notify_job, interval=config.MONITOR_INTERVAL_SECONDS, first=config.MONITOR_INTERVAL_SECONDS)
+    application.job_queue.run_repeating(_discovery_job, interval=DISCOVERY_INTERVAL_SECONDS, first=5)
 
     application.run_polling()
 
