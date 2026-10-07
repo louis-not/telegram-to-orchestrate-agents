@@ -3,11 +3,13 @@ import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-from hub import activity, errors, state, transport
+from hub import activity, errors, pane_format, state, transport
 
 POLL_INTERVAL_SECONDS = 1
 MAX_WAIT_SECONDS = 20
-REPLY_TRUNCATE_CHARS = 3500
+# Mobile-sized, not Telegram's 4096-char limit: a readable snippet, not a
+# wall of raw terminal output.
+REPLY_TRUNCATE_CHARS = 600
 
 
 async def ask_session(update: Update, session_id: str, message: str) -> None:
@@ -40,12 +42,12 @@ async def ask_session(update: Update, session_id: str, message: str) -> None:
             last_pane = pane
 
         final_pane = last_pane or ""
-        truncated = final_pane[-REPLY_TRUNCATE_CHARS:]
+        truncated = pane_format.clean_snippet(final_pane, REPLY_TRUNCATE_CHARS)
         if stabilized:
-            reply_text = truncated
+            reply_text = f"{truncated}\n\nKeep going, or /status {session_id} for a fresh look."
             result = "ok"
         else:
-            reply_text = "note: output may still be changing.\n" + truncated
+            reply_text = f"Still working — here's the latest:\n{truncated}\n\nCheck back with /status {session_id} in a bit."
             result = "ok: did not stabilize within max wait"
         await update.effective_message.reply_text(reply_text)
     except Exception as exc:

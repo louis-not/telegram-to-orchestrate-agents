@@ -1,7 +1,11 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-from hub import activity, errors, state, transport
+from hub import activity, errors, pane_format, state, transport
+
+# Mobile-sized, not Telegram's 4096-char limit: a readable snippet, not a
+# wall of raw terminal output.
+PANE_REPLY_CHARS = 600
 
 
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -23,10 +27,8 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         activity.record(user_id, "/status", session_id, result)
         return
 
-    if len(pane) > 3500:
-        text = "(truncated, showing last 3500 chars)\n" + pane[-3500:]
-    else:
-        text = pane
+    snippet = pane_format.clean_snippet(pane, PANE_REPLY_CHARS)
+    text = f"{snippet}\n\nSend a message to continue it, or /status {session_id} again for a fresh look."
     await update.effective_message.reply_text(text)
     activity.record(user_id, "/status", session_id, "ok")
 
