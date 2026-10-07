@@ -22,3 +22,8 @@ SESSION_REGISTRY_PATH = os.environ.get("SESSION_REGISTRY_PATH", "./sessions.json
 # Bearer token sent on every hub -> agent HTTP call (see agent/config.py).
 # Only required once a non-"local" session is registered.
 AGENT_SHARED_SECRET = os.environ.get("AGENT_SHARED_SECRET", "")
+
+# Model used to answer plain-text (non-command) messages: a one-shot
+# `claude -p` subprocess, not an API call — reuses the CLI's own login,
+# same as every other `claude` invocation this hub launches.
+NLU_MODEL = os.environ.get("NLU_MODEL", "claude-haiku-4-5-20251001")
