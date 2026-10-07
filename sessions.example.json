@@ -1,0 +1,16 @@
+{
+  "sessions": {
+    "example-session": {
+      "host": "local",
+      "tmux_session": "example-session",
+      "cwd": "/home/user/project",
+      "claude_session_id": null
+    },
+    "pc-b-builder": {
+      "host": "http://192.168.1.42:8787",
+      "tmux_session": "builder",
+      "cwd": "/home/user/project",
+      "claude_session_id": null
+    }
+  }
+}
