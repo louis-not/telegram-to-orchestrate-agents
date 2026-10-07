@@ -21,6 +21,15 @@ from hub.handlers.ask import ask_session
 PANE_CONTEXT_CHARS = 2000
 MAX_REPLY_CHARS = 700
 
+# Conversation memory for the general assistant: kept in context.user_data
+# (Telegram's own per-chat storage, same place active_session already
+# lives) rather than a separate store — just the last few exchanges so a
+# follow-up like "sure" to the assistant's own question still makes sense.
+# Cleared on /new (hub/handlers/new.py) since that's a context switch away
+# from the general assistant into direct session control.
+NLU_HISTORY_KEY = "nlu_history"
+MAX_HISTORY_EXCHANGES = 4
+
 SYSTEM_CONTEXT = (
     "You are the general-purpose assistant behind a Telegram bot. This "
     "bot also controls a fleet of tmux-hosted Claude Code sessions, and "
@@ -40,13 +49,20 @@ SYSTEM_CONTEXT = (
 )
 
 
-def _build_prompt(message: str) -> str:
+def _build_prompt(message: str, history: list[tuple[str, str]]) -> str:
     sessions = state.registry.all()
     session_lines = [f"- {sid} (cwd: {s.cwd}, host: {s.host})" for sid, s in sorted(sessions.items())]
     sections = [
         SYSTEM_CONTEXT,
         "Known sessions:\n" + ("\n".join(session_lines) if session_lines else "(none registered)"),
     ]
+
+    if history:
+        turns = "\n".join(f"{role}: {text}" for role, text in history)
+        sections.append(
+            "Recent conversation in this chat (most recent last — the user "
+            f"may be replying to your own last message):\n{turns}"
+        )
 
     for sid in matching.mentioned(message, list(sessions.keys())):
         session = sessions[sid]
@@ -114,11 +130,15 @@ async def cmd_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         activity.record(user_id, "(workspace)", workspace.name, "pending confirm")
         return
 
-    prompt = _build_prompt(message)
+    history = context.user_data.get(NLU_HISTORY_KEY, [])
+    prompt = _build_prompt(message, history)
     reply = await nlu.answer(prompt)
     if len(reply) > MAX_REPLY_CHARS:
         reply = reply[: MAX_REPLY_CHARS - 1].rstrip() + "…"
     await update.effective_message.reply_text(reply)
+
+    history = history + [("User", message), ("Assistant", reply)]
+    context.user_data[NLU_HISTORY_KEY] = history[-(MAX_HISTORY_EXCHANGES * 2):]
     activity.record(user_id, "(nlu)", None, "answered")
 
 

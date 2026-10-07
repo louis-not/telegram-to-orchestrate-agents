@@ -7,6 +7,7 @@ import hub.registry
 import hub.transport
 import hub.workspace_registry
 from hub import state
+from hub.handlers.fallback import NLU_HISTORY_KEY
 from hub.handlers.select import STOP_BUTTON
 
 
@@ -33,6 +34,7 @@ async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         # control surface for a session, not a bot you redirect each time
         # — so a freshly created session becomes the active one immediately.
         context.user_data["active_session"] = session_id
+        context.user_data.pop(NLU_HISTORY_KEY, None)
         await update.effective_message.reply_text(
             f"registered and launched session {session_id} on {host}.\n"
             f"Now talking to it directly — just send your messages, no need for /ask.",
