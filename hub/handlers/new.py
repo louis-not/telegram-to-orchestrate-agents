@@ -5,6 +5,7 @@ import hub.activity
 import hub.errors
 import hub.registry
 import hub.transport
+import hub.workspace_registry
 from hub import state
 from hub.handlers.select import STOP_BUTTON
 
@@ -24,6 +25,9 @@ async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         hub.transport.new_session(session, "claude --permission-mode auto")
         state.registry.put(session_id, session)
+        root = hub.workspace_registry.find_workspace_root(cwd)
+        if root is not None:
+            state.workspaces.register(root, host, session_id)
         result = "registered"
         # Per docs/technical-concept.md: this chat is meant to *be* the
         # control surface for a session, not a bot you redirect each time

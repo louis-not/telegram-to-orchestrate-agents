@@ -9,6 +9,7 @@ sessions without a new agent endpoint, so remote sessions still need /new.
 import logging
 import subprocess
 
+import hub.workspace_registry
 from hub import state
 from hub.registry import Session
 
@@ -65,6 +66,9 @@ def sync_local_sessions() -> tuple[list[str], list[str]]:
         if cwd is None:
             continue
         state.registry.put(name, Session(host="local", tmux_session=name, cwd=cwd))
+        root = hub.workspace_registry.find_workspace_root(cwd)
+        if root is not None:
+            state.workspaces.register(root, "local", name)
         added.append(name)
         logger.info("auto-registered local session %s (cwd=%s)", name, cwd)
 

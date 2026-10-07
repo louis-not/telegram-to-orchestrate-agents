@@ -41,8 +41,9 @@ def main() -> None:
     lock.acquire()
     logging_setup.configure()
 
-    state.init(config.SESSION_REGISTRY_PATH)
+    state.init(config.SESSION_REGISTRY_PATH, config.WORKSPACE_REGISTRY_PATH)
     logger.info("loaded %d session(s) from %s", len(state.registry.all()), config.SESSION_REGISTRY_PATH)
+    logger.info("loaded %d workspace(s) from %s", len(state.workspaces.all()), config.WORKSPACE_REGISTRY_PATH)
 
     application = Application.builder().token(config.BOT_TOKEN).build()
     application.add_handler(TypeHandler(Update, security.allowlist_gate), group=-2)
