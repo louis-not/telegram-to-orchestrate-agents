@@ -54,6 +54,10 @@ class WorkspaceRegistry:
         self._workspaces[name] = workspace
         self._save()
 
+    def remove(self, name: str) -> None:
+        self._workspaces.pop(name, None)
+        self._save()
+
     def register(self, path: str, host: str, discovered_from: str) -> str:
         basename = Path(path).name
         existing = self._workspaces.get(basename)

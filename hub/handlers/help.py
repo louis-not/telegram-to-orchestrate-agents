@@ -9,10 +9,15 @@ HELP_TEXT = (
     "/status <id> — quick peek\n"
     "/ask <id> <msg> — message any session directly\n"
     "/kill <id> — asks /confirm first\n\n"
-    "Once a session is selected (via /new, /resume, or a tap), your "
-    "plain messages go straight to it. No selection? You get a general "
-    "assistant instead.\n\n"
-    "Try /sessions to pick one."
+    "/workspaces — list known project workspaces\n"
+    "/request <workspace> — select or spin up a session for it\n"
+    "Or just name a workspace in a plain message — it'll resolve it "
+    "the same way, asking /confirm first if a new session needs to "
+    "be spun up.\n\n"
+    "Once a session is selected (via /new, /resume, /request, or a "
+    "tap), your plain messages go straight to it. No selection? You "
+    "get a general assistant instead.\n\n"
+    "Try /sessions or /workspaces to pick one."
 )
 
 

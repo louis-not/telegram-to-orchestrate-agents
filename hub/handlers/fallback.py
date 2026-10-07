@@ -12,12 +12,10 @@ handler pastes into its prompt, explicitly labeled as untrusted
 terminal output, not instructions.
 """
 
-import re
-
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
-from hub import activity, nlu, state, transport
+from hub import activity, confirm, errors, matching, nlu, state, transport, workspace_provision
 from hub.handlers.ask import ask_session
 
 PANE_CONTEXT_CHARS = 2000
@@ -42,15 +40,6 @@ SYSTEM_CONTEXT = (
 )
 
 
-def _normalize(text: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", text.lower())
-
-
-def _mentioned_sessions(message: str, known_ids: list[str]) -> list[str]:
-    normalized_message = _normalize(message)
-    return [sid for sid in known_ids if _normalize(sid) and _normalize(sid) in normalized_message]
-
-
 def _build_prompt(message: str) -> str:
     sessions = state.registry.all()
     session_lines = [f"- {sid} (cwd: {s.cwd}, host: {s.host})" for sid, s in sorted(sessions.items())]
@@ -59,7 +48,7 @@ def _build_prompt(message: str) -> str:
         "Known sessions:\n" + ("\n".join(session_lines) if session_lines else "(none registered)"),
     ]
 
-    for sid in _mentioned_sessions(message, list(sessions.keys())):
+    for sid in matching.mentioned(message, list(sessions.keys())):
         session = sessions[sid]
         try:
             pane = transport.capture_pane(session)
@@ -74,6 +63,7 @@ def _build_prompt(message: str) -> str:
 
 async def cmd_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = update.effective_message.text or ""
+    user_id = update.effective_user.id
 
     active_session = context.user_data.get("active_session")
     if active_session is not None:
@@ -86,12 +76,50 @@ async def cmd_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await ask_session(update, active_session, message)
             return
 
+    names = matching.mentioned(message, list(state.workspaces.all().keys()))
+    if len(names) == 1:
+        workspace = state.workspaces.get(names[0])
+        if not workspace_provision.revalidate(workspace):
+            state.workspaces.remove(names[0])
+            await update.effective_message.reply_text(
+                f"workspace {names[0]} is no longer available (path or .creds.md marker missing)."
+            )
+            activity.record(user_id, "(workspace)", names[0], "error: workspace gone")
+            return
+
+        live = workspace_provision.live_session_for_path(workspace.path)
+        if live is not None:
+            session_id, _ = live
+            context.user_data["active_session"] = session_id
+            await ask_session(update, session_id, message)
+            return
+
+        async def _do_provision() -> str:
+            try:
+                session_id = await workspace_provision.resolve_or_provision(workspace, message)
+                context.user_data["active_session"] = session_id
+                await ask_session(update, session_id, message)
+                return "provisioned"
+            except workspace_provision.WorkspaceGone:
+                await update.effective_message.reply_text(f"workspace {workspace.name} is no longer available.")
+                return "error: workspace gone"
+            except Exception as exc:
+                return await errors.reply_failure(update, "(workspace)", exc)
+
+        confirm.request(user_id, f"spin up a new session for workspace '{workspace.name}'", _do_provision)
+        await update.effective_message.reply_text(
+            f"no live session for workspace '{workspace.name}' yet — this will spin one up. "
+            f"Reply /confirm within 30s to proceed."
+        )
+        activity.record(user_id, "(workspace)", workspace.name, "pending confirm")
+        return
+
     prompt = _build_prompt(message)
     reply = await nlu.answer(prompt)
     if len(reply) > MAX_REPLY_CHARS:
         reply = reply[: MAX_REPLY_CHARS - 1].rstrip() + "…"
     await update.effective_message.reply_text(reply)
-    activity.record(update.effective_user.id, "(nlu)", None, "answered")
+    activity.record(user_id, "(nlu)", None, "answered")
 
 
 def register(application: Application) -> None:
