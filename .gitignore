@@ -4,6 +4,8 @@
 !.env.template
 sessions.json
 *.local.json
+audit.sqlite3
+hub.lock
 
 # Python
 __pycache__/
@@ -30,3 +32,4 @@ logs/
 
 # Claude Code
 .claude/settings.local.json
+CLAUDE.md
