@@ -1,0 +1,32 @@
+# Secrets / local config
+.env
+.env.*
+!.env.template
+sessions.json
+*.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Claude Code
+.claude/settings.local.json
