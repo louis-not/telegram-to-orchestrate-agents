@@ -7,6 +7,10 @@ sessions.json
 audit.sqlite3
 hub.lock
 
+# Runtime state for new features — keep this one directory, not loose
+# files at the repo root (see docs/prd-workspace-mapping.md §10)
+var/
+
 # Python
 __pycache__/
 *.py[cod]
