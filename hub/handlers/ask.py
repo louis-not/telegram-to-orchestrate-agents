@@ -10,13 +10,9 @@ MAX_WAIT_SECONDS = 20
 REPLY_TRUNCATE_CHARS = 3500
 
 
-async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def ask_session(update: Update, session_id: str, message: str) -> None:
+    """Core /ask logic, reusable by the tap-to-select flow in fallback.py."""
     user_id = update.effective_user.id
-    if len(context.args) < 2:
-        await update.effective_message.reply_text("usage: /ask <id> <message>")
-        return
-    session_id = context.args[0]
-    message = " ".join(context.args[1:])
     session = state.registry.get(session_id)
     if session is None:
         await update.effective_message.reply_text(f"no such session: {session_id}")
@@ -56,6 +52,15 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         result = await errors.reply_failure(update, "/ask", exc)
 
     activity.record(user_id, "/ask", session_id, result)
+
+
+async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if len(context.args) < 2:
+        await update.effective_message.reply_text("usage: /ask <id> <message>")
+        return
+    session_id = context.args[0]
+    message = " ".join(context.args[1:])
+    await ask_session(update, session_id, message)
 
 
 def register(application: Application) -> None:

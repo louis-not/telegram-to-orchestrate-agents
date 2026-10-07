@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from hub import activity, state
@@ -33,7 +33,10 @@ async def cmd_sessions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         host_label = "Local" if host == "local" else host
         bullets = "\n".join(f"  • {session_id} — {status}" for session_id, status in entries)
         blocks.append(f"{host_label}:\n{bullets}")
-    await update.effective_message.reply_text("\n\n".join(blocks))
+    text = "\n\n".join(blocks) + "\n\nTap a session to send it messages directly:"
+
+    buttons = [[InlineKeyboardButton(session_id, callback_data=f"ask:{session_id}")] for session_id in sorted(sessions)]
+    await update.effective_message.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons))
     activity.record(update.effective_user.id, "/sessions", None, f"listed {len(sessions)}")
 
 
