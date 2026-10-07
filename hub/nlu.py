@@ -9,12 +9,21 @@ Q&A reply rather than a long-running tool-using session.
 Uses the `claude` CLI's own login, not a separate API key: same
 authentication every other `claude --permission-mode auto` launch in this
 hub already relies on.
+
+Tool access is locked down, not just prompted away: a --disallowedTools
+list plus --strict-mcp-config (no servers passed -> none load) blocks
+every built-in and MCP tool. Verified empirically — "no tools" in the
+prompt text alone did nothing (the agent ran Bash anyway when only told
+not to); the flags below were checked against ground-truth side effects
+(a file write), not the model's self-report, which turned out to
+confabulate "success" even once the call was actually blocked.
 """
 
 import asyncio
 import json
 import logging
 import os
+import tempfile
 
 from hub import config
 
@@ -22,6 +31,20 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 45
 _SECRET_ENV_PREFIXES = ("TELEGRAM_", "AGENT_SHARED_SECRET", "SESSION_REGISTRY_PATH")
+
+# Dedicated, empty, non-project directory: avoids loading this repo's own
+# CLAUDE.md or any other directory's project memory as context.
+SANDBOX_DIR = os.path.join(tempfile.gettempdir(), "hub-nlu-sandbox")
+
+_DISALLOWED_TOOLS = [
+    "Bash", "Edit", "Write", "Read", "Glob", "Grep", "WebFetch", "WebSearch",
+    "NotebookEdit", "Agent", "Task", "Skill", "ToolSearch", "AskUserQuestion",
+    "Artifact", "ArtifactComments", "ArtifactData", "SendMessage", "CronCreate",
+    "CronDelete", "CronList", "Monitor", "TaskStop", "PushNotification",
+    "RemoteTrigger", "EnterPlanMode", "ExitPlanMode", "EnterWorktree",
+    "ExitWorktree", "ListMcpResourcesTool", "ReadMcpResourceDirTool",
+    "ReadMcpResourceTool", "Workflow", "ScheduleWakeup", "TaskOutput", "TodoWrite",
+]
 
 
 def _child_env() -> dict[str, str]:
@@ -44,18 +67,23 @@ def build_command(prompt: str) -> list[str]:
         "default",
         "--model",
         config.NLU_MODEL,
+        "--strict-mcp-config",
+        "--disallowedTools",
+        *_DISALLOWED_TOOLS,
     ]
 
 
 async def answer(prompt: str) -> str:
     """Runs claude -p with prompt, returns its text answer (or a short error string)."""
     cmd = build_command(prompt)
+    os.makedirs(SANDBOX_DIR, exist_ok=True)
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            cwd=SANDBOX_DIR,
             env=_child_env(),
         )
     except FileNotFoundError:

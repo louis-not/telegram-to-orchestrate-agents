@@ -26,10 +26,15 @@ async def _notify_job(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def _discovery_job(context: ContextTypes.DEFAULT_TYPE) -> None:
-    for session_id in discovery.sync_local_sessions():
+    added, removed = discovery.sync_local_sessions()
+    for session_id in added:
         activity.record(0, "discovery.sync", session_id, "auto-registered")
         for user_id in config.ALLOWED_USER_IDS:
             await context.bot.send_message(chat_id=user_id, text=f"auto-registered new local session: {session_id}")
+    for session_id in removed:
+        activity.record(0, "discovery.sync", session_id, "auto-removed")
+        for user_id in config.ALLOWED_USER_IDS:
+            await context.bot.send_message(chat_id=user_id, text=f"removed stale session (tmux session gone): {session_id}")
 
 
 def main() -> None:
