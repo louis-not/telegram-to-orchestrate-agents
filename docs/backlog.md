@@ -4,14 +4,19 @@ Derived from [prd.md](prd.md) and [technical-concept.md](technical-concept.md).
 Each item references the FR/SR/NFR it implements. Status reflects what's
 already scaffolded in the repo vs. what's still to build.
 
-**2026-10-07:** Epics A–C, and D2/D3/E1–E3/F1–F3 implemented and smoke-tested
+**2026-10-07:** Epics A–C, and D2/D3/E1–E3/F1–F4 implemented and verified
 locally (real tmux session, sqlite audit log, confirm/rate-limit logic — see
-commit history on `feat/bot-core`). Still genuinely open, and not doable from
-a single dev box: **D1** (needs a second physical LAN machine), **D4**
-(stretch, deferred), **E4** (needs days of real production traffic to judge
-notification noise), and **F4** (needs a live, resumable `claude` session to
-test against — the registry/tmux mechanics are verified, the end-to-end
-`claude --resume` behavior is not).
+commit history on `feat/bot-core`). F4 was tested end-to-end against a real
+`claude` session: launched one in a scratch directory with a distinctive
+CLAUDE.md memory fact, killed its tmux pane directly, then ran `/resume`'s
+exact `hub.transport.new_session(session, f"claude --resume={id}")` call —
+the resumed session recovered both the prior conversation and the
+directory's project memory, confirming resume relies on the stored `cwd`
+(not just the session id) for memory to come back correctly. Still
+genuinely open, and not doable from a single dev box: **D1** (declined for
+now — needs a second physical LAN machine) and **D4** (stretch, deferred).
+**E4** deferred — needs days of real production traffic to judge
+notification noise.
 
 ## Epic A — Telegram bot core
 
@@ -116,7 +121,7 @@ and to the real scheduler.
   hub or agent, matching the `bangkax-agent-api` convention. (SR4)
 - [x] **F3. Secrets rotation runbook** — one paragraph on how to rotate
   `TELEGRAM_BOT_TOKEN` or `AGENT_SHARED_SECRET` without downtime surprises.
-- [ ] **F4. Resume-after-crash test** — kill a managed Claude session's
+- [x] **F4. Resume-after-crash test** — kill a managed Claude session's
   tmux pane directly, then confirm `/resume` brings it back with history
   via `claude --resume`. (FR13)
 
