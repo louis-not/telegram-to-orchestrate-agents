@@ -1,5 +1,9 @@
-from hub import transport
+from hub import pane_format, transport
 from hub.registry import SessionRegistry
+
+# Mobile-sized, matching /status's PANE_REPLY_CHARS: a readable snippet,
+# not a wall of raw terminal output (border lines, blank padding).
+NOTIFICATION_CHARS = 500
 
 
 class Monitor:
@@ -26,5 +30,5 @@ class Monitor:
             previous = self._last_snapshot.get(session_id)
             self._last_snapshot[session_id] = pane
             if previous is not None and pane != previous:
-                notifications.append((session_id, pane[-500:]))
+                notifications.append((session_id, pane_format.clean_snippet(pane, NOTIFICATION_CHARS)))
         return notifications
