@@ -191,27 +191,75 @@ docs/
 var/                            gitignored runtime state this feature adds: workspaces.json, uploads/<session_id>/
 ```
 
-## Setup
+## Setup & run (hub)
+
+Only two things are required: a Telegram bot and `startup.sh`.
+
+1. **Create a Telegram bot.** Message [@BotFather](https://t.me/BotFather)
+   on Telegram, send `/newbot`, follow the prompts, and copy the bot token
+   it gives you. Then message [@userinfobot](https://t.me/userinfobot) (or
+   any similar bot) to get your own numeric Telegram user ID — this is the
+   only ID that will be allowed to control the hub.
+2. **Configure.**
+   ```bash
+   cp .env.template .env
+   chmod 600 .env   # holds live credentials — owner-read-write only
+   ```
+   Fill in `.env`:
+   - `TELEGRAM_BOT_TOKEN` — from BotFather
+   - `TELEGRAM_ALLOWED_USER_IDS` — your numeric user ID (comma-separate for more than one)
+   - `AGENT_SHARED_SECRET` — only needed if you'll register a session on another PC (see below); generate with `python -c "import secrets; print(secrets.token_hex(32))"`
+3. **Start it.**
+   ```bash
+   ./startup.sh
+   ```
+   This creates/activates `.venv`, installs dependencies, and runs
+   `python -m hub` in the foreground. Stop with Ctrl-C.
+
+That's it — message your bot on Telegram and send `/help`.
+
+### Keep it running across reboots (optional)
+
+To have the hub start automatically whenever the PC turns on, run it as a
+systemd user service:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.template .env   # fill in TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS, AGENT_SHARED_SECRET
-chmod 600 .env           # it holds live credentials — owner-read-write only
-cp sessions.example.json sessions.json   # optional: seed the registry
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/telegram-hub.service <<EOF
+[Unit]
+Description=Telegram-to-orchestrate-agents hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=$(pwd)
+ExecStart=$(pwd)/startup.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+
+loginctl enable-linger "$USER"             # starts the service even when nobody is logged in
+systemctl --user daemon-reload
+systemctl --user enable --now telegram-hub.service
 ```
 
-On every PC that isn't the hub: same clone, same `.env` (same
+Useful afterwards:
+```bash
+systemctl --user status telegram-hub    # is it running?
+systemctl --user restart telegram-hub   # restart (e.g. after editing .env)
+journalctl --user -u telegram-hub -f    # tail logs
+```
+
+### Other PCs (optional)
+
+Only needed if you want to control Claude Code sessions on more than one
+machine. On every PC that isn't the hub: same clone, same `.env` (same
 `AGENT_SHARED_SECRET`, pick a free `AGENT_PORT`), run `python -m agent`
-instead of `python -m hub`.
-
-## Run
-
-```bash
-python -m hub     # on the main PC
-python -m agent   # on every other registered PC
-```
+instead of `./startup.sh`.
 
 ## Current status
 
