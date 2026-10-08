@@ -1,7 +1,8 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 from hub import activity, state
+from hub.handlers.request import resolve_and_activate
 
 
 async def cmd_workspaces(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -30,13 +31,27 @@ async def cmd_workspaces(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             lines.append(f"  • {name} — {workspace.path} {status}")
             if live_session_id:
                 buttons.append([InlineKeyboardButton(name, callback_data=f"ask:{live_session_id}")])
+            else:
+                buttons.append([InlineKeyboardButton(f"{name} (spin up)", callback_data=f"request_workspace:{name}")])
         bullets = "\n".join(lines)
         blocks.append(f"{host_label}:\n{bullets}")
-    text = "\n\n".join(blocks) + "\n\nTap a workspace with a live session to send it messages directly:"
+    text = (
+        "\n\n".join(blocks)
+        + "\n\nTap a workspace to send it messages directly — one with a live "
+        "session relays right in, one without spins a new session up first:"
+    )
 
     await update.effective_message.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons))
     activity.record(update.effective_user.id, "/workspaces", None, f"listed {len(workspaces)}")
 
 
+async def cmd_request_workspace(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    name = query.data.removeprefix("request_workspace:")
+    await query.answer()
+    await resolve_and_activate(context, update.effective_user.id, name, query.message.reply_text)
+
+
 def register(application: Application) -> None:
     application.add_handler(CommandHandler("workspaces", cmd_workspaces))
+    application.add_handler(CallbackQueryHandler(cmd_request_workspace, pattern=r"^request_workspace:"))
