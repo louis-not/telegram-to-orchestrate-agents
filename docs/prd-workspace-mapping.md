@@ -74,9 +74,9 @@ any future messages/images) into it.
 ## 5. How workspace discovery works (proposed)
 
 **Opt-in marker:** a workspace root is any directory containing a
-`.creds.md` file. This repo already has two real examples:
-`/home/lsnt/Repositories/oliv-v2/.creds.md` and
-`/home/lsnt/Repositories/oliv-workspace/.creds.md`. Presence of this file
+`.hub-workspace` file. This repo already has two real examples:
+`/home/lsnt/Repositories/oliv-v2/.hub-workspace` and
+`/home/lsnt/Repositories/oliv-workspace/.hub-workspace`. Presence of this file
 is the *only* signal the hub uses to decide a directory is hub-integrable
 — no marker, no registration, even if a session's cwd is one of its
 subdirectories.
@@ -84,7 +84,7 @@ subdirectories.
 **When discovery runs:** every time a session is created or observed —
 `/new`, and `discovery.sync_local_sessions()`'s periodic auto-registration
 of local tmux sessions — the hub walks upward from that session's `cwd`
-toward `/` looking for the nearest `.creds.md`. If found, it registers
+toward `/` looking for the nearest `.hub-workspace`. If found, it registers
 `workspace_name = <that directory's basename>` → `{path, host,
 discovered_from: <session_id>}` in a new workspace registry (own JSON
 file, same pattern as `sessions.json`).
@@ -105,7 +105,7 @@ hosts) — open question, see §9.
   this feature)
 - FR2: After any session creation (`/new`) or auto-discovery
   (`discovery.sync_local_sessions`), the hub checks for the nearest
-  `.creds.md` walking up from that session's `cwd` and registers/updates
+  `.hub-workspace` walking up from that session's `cwd` and registers/updates
   the workspace entry if found
 - FR3: Registration is silent by default (matches "auto-registered new
   local session" style discovery notifications already sent for sessions)
@@ -204,7 +204,7 @@ in a real project directory — meaningfully more powerful than today's
 security principles (§7 of prd.md) apply in full, plus:
 
 - SR1: Auto-provisioning (FR8) only ever targets a directory already
-  carrying the `.creds.md` marker — never an arbitrary path inferred from
+  carrying the `.hub-workspace` marker — never an arbitrary path inferred from
   conversation text
 - SR2: Workspace resolution from free text (FR6) still runs behind the
   existing allowlist/rate-limit gates — no new bypass path
@@ -212,7 +212,7 @@ security principles (§7 of prd.md) apply in full, plus:
   free text additionally requires an explicit confirm step, the way `/kill`
   does today
 - SR4: The workspace registry is re-validated against disk at use time
-  (path still exists, `.creds.md` still present) before relaying into it —
+  (path still exists, `.hub-workspace` still present) before relaying into it —
   a workspace that's been deleted or had its marker removed fails closed,
   not silently stale
 
@@ -276,10 +276,22 @@ None remaining — all resolved by default per §10 below.
   backlog generation and the handoff to the executor session. Every PRD
   the planning session sends ends with "reply /approve when this looks
   right" so the signal is always visible, not just discoverable.
+- **Opt-in marker filename (amended post-implementation):** changed from
+  `.creds.md` to a dedicated empty marker, `.hub-workspace`. The original
+  choice tied workspace membership to the presence of a project's real
+  secrets file — confirmed live: every active project *without* a
+  `.creds.md` (several in daily use) silently never qualified, which
+  wasn't the intent (§5's "only directories that opt in" was meant to be
+  a deliberate choice, not a side effect of a repo's credentials
+  layout). `.hub-workspace` is content-free by design — just a marker,
+  never anything worth protecting — and is added once per project
+  independent of whether that project has a `.creds.md` at all. Existing
+  workspaces (`oliv-v2`, `oliv-workspace`) got the new marker alongside
+  their existing `.creds.md` so they stay registered.
 
 ## 11. Out of scope (for now)
 
 - Multiple concurrent sessions per workspace
-- Proactive filesystem scanning for `.creds.md` files
+- Proactive filesystem scanning for `.hub-workspace` files
 - Remote-host workspace discovery (pending open decision §9.4)
 - Non-image attachments

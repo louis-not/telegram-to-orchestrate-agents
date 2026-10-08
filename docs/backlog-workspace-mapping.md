@@ -21,9 +21,9 @@ New module, same shape as `hub/registry.py`.
   `var/workspaces.json`. New `config.WORKSPACE_REGISTRY_PATH` env var,
   default `./var/workspaces.json`. Wire into `hub/state.py` alongside
   `registry`/`monitor` so handlers reach it as `state.workspaces`. (FR1)
-- [ ] **A2. `.creds.md` walk-up resolver** — a function that, given a
+- [ ] **A2. `.hub-workspace` walk-up resolver** — a function that, given a
   `cwd`, walks upward toward `/` and returns the nearest directory
-  containing `.creds.md`, or `None`. Stop at the filesystem root or the
+  containing `.hub-workspace`, or `None`. Stop at the filesystem root or the
   user's home directory, whichever comes first, so it never walks past
   `/home/<user>`. (§5, FR2)
 - [ ] **A3. Hook into `/new`** — after `cmd_new` successfully creates and
@@ -90,7 +90,7 @@ New module, same shape as `hub/registry.py`.
   (FR9)
 - [ ] **C6. Fail-closed revalidation** — immediately before C2/C4 act on a
   workspace, re-check the path still exists and still contains
-  `.creds.md`; if not, remove the stale registry entry and reply that the
+  `.hub-workspace`; if not, remove the stale registry entry and reply that the
   workspace is no longer available instead of operating on a dead/altered
   path. (SR4)
 

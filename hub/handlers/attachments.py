@@ -15,6 +15,7 @@ from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 from hub import activity, confirm, errors, matching, state, workspace_provision
 from hub.handlers.ask import ask_session
+from hub.workspace_registry import WORKSPACE_MARKER
 
 UPLOADS_DIR = Path("./var/uploads")
 NO_TARGET_REPLY = (
@@ -64,7 +65,8 @@ async def cmd_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not workspace_provision.revalidate(workspace):
             state.workspaces.remove(names[0])
             await update.effective_message.reply_text(
-                f"workspace {names[0]} is no longer available (path or .creds.md marker missing)."
+                f"workspace {names[0]} is no longer available (path or "
+                f"{WORKSPACE_MARKER} marker missing)."
             )
             activity.record(user_id, "(photo)", names[0], "error: workspace gone")
             return

@@ -95,7 +95,7 @@ def sync_local_sessions() -> tuple[list[str], list[str]]:
     # existed (or added by hand to sessions.json) never goes through the
     # "newly discovered" branch above, so it would otherwise never get a
     # workspace resolved for it. Re-resolving every live local session each
-    # tick is cheap (just .creds.md existence checks) and self-healing —
+    # tick is cheap (just marker-file existence checks) and self-healing —
     # also silent, same as the newly-discovered case (A6).
     for session_id, session in known.items():
         if session.host == "local" and session.tmux_session in live_names:

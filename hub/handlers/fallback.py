@@ -17,6 +17,7 @@ from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 from hub import activity, confirm, errors, matching, nlu, state, transport, workspace_provision
 from hub.handlers.ask import ask_session
+from hub.workspace_registry import WORKSPACE_MARKER
 
 PANE_CONTEXT_CHARS = 2000
 MAX_REPLY_CHARS = 700
@@ -98,7 +99,8 @@ async def cmd_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if not workspace_provision.revalidate(workspace):
             state.workspaces.remove(names[0])
             await update.effective_message.reply_text(
-                f"workspace {names[0]} is no longer available (path or .creds.md marker missing)."
+                f"workspace {names[0]} is no longer available (path or "
+                f"{WORKSPACE_MARKER} marker missing)."
             )
             activity.record(user_id, "(workspace)", names[0], "error: workspace gone")
             return

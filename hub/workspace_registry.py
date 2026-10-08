@@ -3,6 +3,13 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+# Opt-in marker: an empty file, independent of whether a project also keeps
+# a real .creds.md — tying workspace membership to the presence of a live
+# secrets file was a design smell (and meant plenty of real projects with
+# no stored creds could never opt in). See docs/prd-workspace-mapping.md
+# §10 ("Opt-in marker" decision).
+WORKSPACE_MARKER = ".hub-workspace"
+
 
 @dataclass
 class Workspace:
@@ -17,7 +24,7 @@ def find_workspace_root(cwd: str) -> str | None:
     home = Path.home()
     current = Path(cwd)
     while True:
-        if (current / ".creds.md").exists():
+        if (current / WORKSPACE_MARKER).exists():
             return str(current)
         if current == current.parent or current == home:
             return None

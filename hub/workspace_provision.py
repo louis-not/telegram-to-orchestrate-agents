@@ -9,7 +9,7 @@ from pathlib import Path
 
 from hub import config, naming, state, transport
 from hub.registry import Session
-from hub.workspace_registry import Workspace
+from hub.workspace_registry import WORKSPACE_MARKER, Workspace
 
 LAUNCH_GUIDANCE = (
     "Before doing anything else: classify the request that follows. If it's "
@@ -36,7 +36,7 @@ class WorkspaceGone(Exception):
 
 
 def revalidate(workspace: Workspace) -> bool:
-    return Path(workspace.path).exists() and (Path(workspace.path) / ".creds.md").exists()
+    return Path(workspace.path).exists() and (Path(workspace.path) / WORKSPACE_MARKER).exists()
 
 
 def live_session_for_path(path: str) -> tuple[str, Session] | None:

@@ -82,7 +82,7 @@ human at the keyboard to click "allow."
 | `/new <id> <host> <cwd>` | Create a tmux session, launch `claude --permission-mode auto` in it, register it — and make it the chat's active session |
 | `/kill <id>` | Kill the tmux session (asks for `/confirm` first) |
 | `/resume <id>` | Recreate the tmux session and `claude --resume=<claude_session_id>` — also becomes the active session |
-| `/workspaces` | List known project workspaces (directories opted in via a `.creds.md` marker), with a tap-to-select button for any that already have a live session |
+| `/workspaces` | List known project workspaces (directories opted in via a `.hub-workspace` marker), with a tap-to-select button for any that already have a live session |
 | `/request <workspace>` | Select a workspace's live session, or provision a new one if it doesn't have one yet — no `/confirm` needed, typing the command is itself the deliberate act |
 | `/approve` | Only while a workspace-provisioned planning session is active: tells it to write a backlog from the PRD it drafted, then hands off to a new executor session in the same workspace |
 
@@ -112,7 +112,7 @@ concrete next step; on a phone, a 3500-char terminal dump is not a reply.
 ### Workspaces & on-demand sessions
 
 A directory becomes a hub-integrable **workspace** purely by containing a
-`.creds.md` marker — no separate registration step. The hub discovers the
+`.hub-workspace` marker — no separate registration step. The hub discovers the
 nearest one walking up from a session's cwd every time a session is
 created (`/new`) or auto-discovered locally, and registers `<basename>` →
 `{path, host}` (a same-named workspace on a different host gets suffixed
@@ -125,7 +125,7 @@ spinning one up (`claude --permission-mode auto --model
 <config.WORKSPACE_SESSION_MODEL>`), names it with a short Haiku-generated
 slug, and relays the message once it's up. `/request <workspace>` does
 the same resolution without the confirm step. A workspace is
-re-validated against disk (path + `.creds.md` still present) immediately
+re-validated against disk (path + `.hub-workspace` still present) immediately
 before every relay or provision — one that's been deleted or had its
 marker removed fails closed, not silently stale. A photo sent to an
 active session or a workspace named in its caption is downloaded and
@@ -147,7 +147,7 @@ second, paired **executor** session in the same workspace to carry it out
 - Destructive commands (`/kill`, anything resembling `rm`, force pushes) issued remotely require a confirmation step, since there's no second human in the loop to catch a mistake
 - The general-assistant fallback (`hub/nlu.py`) gets no tools and no MCP servers, not just a prompt telling it not to act — "no tools" in the prompt text alone did nothing in testing (it ran Bash anyway); only an explicit `--disallowedTools` list plus `--strict-mcp-config` actually blocks execution, verified against real file-write side effects rather than the model's own claims
 - Auto-provisioning a workspace session from free text requires `/confirm` first, same gate as `/kill` — this spins up a new always-on `--permission-mode auto` agent in a real project directory, meaningfully more powerful than a read-only reply; `/request <workspace>` skips it only because typing the command is itself the deliberate act
-- A workspace is re-validated against disk (path exists, `.creds.md` still present) immediately before every relay or provision, not just at registration time — a deleted workspace or one with its marker removed fails closed instead of silently operating on a stale path
+- A workspace is re-validated against disk (path exists, `.hub-workspace` still present) immediately before every relay or provision, not just at registration time — a deleted workspace or one with its marker removed fails closed instead of silently operating on a stale path
 - Every `claude` process this feature launches (naming, workspace sessions, the executor handoff) passes an explicit `--model` pinned to `config.WORKSPACE_SESSION_MODEL`/`config.NLU_MODEL` — Sonnet or Haiku only, never left to the CLI's own default, never Opus
 
 ## Project layout
@@ -156,7 +156,7 @@ second, paired **executor** session in the same workspace to carry it out
 hub/
   config.py                env vars: bot token, allowlist, monitor interval, registry/workspace paths, agent shared secret, NLU/workspace-session models
   registry.py               session registry (load/save sessions.json)
-  workspace_registry.py     workspace registry (load/save var/workspaces.json), `.creds.md` walk-up resolver
+  workspace_registry.py     workspace registry (load/save var/workspaces.json), `.hub-workspace` walk-up resolver
   workspace_provision.py    workspace -> live session resolution and auto-provisioning; launch-prompt guidance for the PRD-first flow
   naming.py                 one-shot Haiku call that turns a triggering message into a short kebab-case session name
   matching.py               shared normalization/substring-match helper (session ids and workspace names alike)
@@ -290,7 +290,7 @@ tracks it item by item.
 Still open, and not doable from this one machine: a multi-PC smoke test
 against a second physical PC (D1), a noise-level review of real
 notifications after a few days of use (E4), and a live smoke test of the
-workspace-mapping flow against a real `.creds.md`-marked project —
+workspace-mapping flow against a real `.hub-workspace`-marked project —
 registration, natural-language resolution, confirm-gated provisioning,
 and the `/approve` planner→executor handoff haven't been exercised
 against the live Telegram/tmux stack yet, only import/compile-checked.
@@ -301,6 +301,6 @@ against the live Telegram/tmux stack yet, only import/compile-checked.
 - A web UI — Telegram chat is the only interface for v1
 - Multi-user support — single authorized operator only
 - Multiple concurrent sessions per workspace — one live session per workspace, same as the base one-tmux-session-per-id model
-- Proactively scanning the filesystem for `.creds.md` — workspace discovery only happens as a side effect of a session being created
+- Proactively scanning the filesystem for `.hub-workspace` — workspace discovery only happens as a side effect of a session being created
 - Non-image attachments (video, audio, documents) — v1 only proves the mechanism works for photos
 - Remote-host workspace discovery — local-only for v1, matching `discovery.py`'s existing local-only limitation
