@@ -8,12 +8,24 @@ sessions without a new agent endpoint, so remote sessions still need /new.
 
 import logging
 import subprocess
+from pathlib import Path
 
 import hub.workspace_registry
 from hub import state
 from hub.registry import Session
 
 logger = logging.getLogger(__name__)
+
+# The hub's own repo root (hub/discovery.py -> hub/ -> repo root), so a live
+# tmux session pointed at this same directory never gets auto-tracked as a
+# project session. _own_tmux_session_name() below only works when the hub
+# itself runs inside a tmux pane; it doesn't when it's a systemd/plain
+# background process (no TMUX env, no pane of its own) — in that case it
+# silently returns None and excludes nothing, so a tmux session that happens
+# to exist (named "hub" or anything else) with this cwd would otherwise slip
+# through as a seemingly legitimate project session. This check doesn't
+# depend on how the hub itself is run.
+_OWN_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _own_tmux_session_name() -> str | None:
@@ -63,7 +75,7 @@ def sync_local_sessions() -> tuple[list[str], list[str]]:
         if name == own_session or name in known:
             continue
         cwd = _pane_cwd(name)
-        if cwd is None:
+        if cwd is None or Path(cwd).resolve() == _OWN_REPO_ROOT:
             continue
         state.registry.put(name, Session(host="local", tmux_session=name, cwd=cwd))
         root = hub.workspace_registry.find_workspace_root(cwd)
